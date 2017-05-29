@@ -1,0 +1,7 @@
+<!doctype html>
+<title>Hello from Flask</title>
+{% if new_filename %}
+  <h1>some text <img src="{{ url_for('uploaded_file', filename=new_filename) }}">more text!</h1>
+{% else %}
+  <h1>no image for whatever reason</h1>
+{% endif %}

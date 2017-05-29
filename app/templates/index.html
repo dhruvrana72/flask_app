@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link href="//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap.min.css"
+          rel="stylesheet">
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h3 class="text-muted">How To Upload a File</h3>
+    </div>
+    <hr/>
+    <div>
+
+        <form action="upload" method="post" enctype="multipart/form-data" target="_blank">
+            <input type="file" name="file"><br/><br/>
+            <input type="submit" value="Upload">
+        </form>
+    </div>
+
+    <div>
+        <p>If your image is PDF click below to convert to jpeg</p>
+        <form action="convert" target="_blank">
+            <input type="submit" value="Convert"/>
+        </form>
+    </div>
+
+     <br>
+    <div>Set threshold (0 - 1)</div>
+    <div>try to detect edges/corners without changing threshold, if fails then change it.
+    (hint: start with 0.7) </div>
+    <form action="." method="POST">
+        <input type="text" name="text">
+        <input type="submit" name="my-form" value="Send">
+    </form>
+
+    <br>
+    <div>
+        <p>Detect edges in Image</p>
+        <form action="detect_edges" target="_blank">
+            <input type="submit" value="Detect Edges"/>
+        </form>
+    </div>
+
+    <br>
+    <div>
+        <p>Generate Compressed JPEG and TIFF links</p>
+        <form action="compression" target="_blank">
+            <input type="submit" value="Compression"/>
+        </form>
+    </div>
+</div>
+</body>
+</html>
