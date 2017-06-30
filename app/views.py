@@ -7,6 +7,7 @@ from werkzeug.utils import secure_filename
 from wand.image import Image as wandimage
 from skimage import exposure
 from app import app
+from PIL import Image, ImageFont, ImageDraw
 
 global loc
 global crop
@@ -57,7 +58,7 @@ def main():
 
 @app.route('/convert')
 def convert():
-    with wandimage(filename='./app/uploads/nach.pdf', resolution=1200) as img:
+    with wandimage(filename='/home/sodel/Desktop/FlaskApp/app/uploads/nach.pdf', resolution=1200) as img:
         print('width =', img.width)
         print('height =', img.height)
         print('pages = ', len(img.sequence))
@@ -68,7 +69,9 @@ def convert():
         return render_template('converted_image.html')
 
 
-threshold = 0.7
+loc = 0
+crop = 0
+threshold = 0.75
 @app.route('/', methods=['POST'])
 def my_form_post():
     global threshold
@@ -76,11 +79,8 @@ def my_form_post():
         if request.form['my-form'] == 'Send':
             text = request.form['text']
             threshold = text
-    return text
+    return threshold
 
-loc = 0
-crop = 0
-threshold = 0.75
 @app.route('/detect_edges')
 def detect_edges():
     global loc
@@ -166,11 +166,9 @@ def detect_edges():
     for pt in zip(*loc[::-1]):
         cv2.rectangle(crop, pt, (pt[0] + w, pt[1] + h), (0, 0, 255), 2)
     cv2.imwrite('./app/uploads/res.png', crop)
-    return render_template('detect_edges.html')
 
-@app.route('/compression')
-def compression():
     print loc
+    print cv2.__version__
     pts = np.array(zip(*loc[::-1]), 'int32')
     x, y, w, h = cv2.boundingRect(pts)
     cv2.rectangle(crop, (x, y), (x + w, y + h), (0, 255, 0), 2)
@@ -200,6 +198,122 @@ def compression():
     final_image = cv2.cvtColor(final_image, cv2.COLOR_BGR2GRAY)
     final_image = exposure.rescale_intensity(final_image, out_range=(0, 255))
     cv2.imwrite('./app/uploads/output44r.jpg', final_image)
+    return render_template('detect_edges.html')
+
+def overwrite(number, x, y, font, image, output_image):
+    img = Image.open('./app/uploads/' + image)
+    img = img.convert('RGB')
+    draw = ImageDraw.Draw(img)
+    image_font = ImageFont.truetype("arial.ttf", font)
+    draw.text((x, y), number, (0, 0, 0), font=image_font)
+    img.save('./app/uploads/' + output_image)
+
+account_number = 00000000000
+account_x = 0
+account_y = 0
+account_font = 180
+account_counter = 0
+@app.route('/overwrite_account', methods=['POST'])
+def overwrite_account():
+    global account_number, account_x, account_y, account_font, account_counter
+    account_counter = account_counter + 1
+    print account_counter
+    if request.method == 'POST':
+        if request.form['account'] == 'Set Account':
+            account_number = request.form['account_number']
+            account_x = request.form['account_number_x']
+            account_y = request.form['account_number_y']
+            account_font = request.form['account_number_font']
+            test = [account_number, account_x, account_y, account_font]
+            print test
+            overwrite(account_number, int(account_x), int(account_y), int(account_font), "output44r.jpg", "sample-out.jpg")
+    return render_template('account_number.html')
+
+ifsc_code = 00000000000
+ifsc_code_x = 0
+ifsc_code_y = 0
+ifsc_code_font = 180
+ifsc_counter = 0
+@app.route('/overwrite_ifsc', methods=['POST'])
+def overwrite_ifsc():
+    global ifsc_code, ifsc_code_x, ifsc_code_y, ifsc_code_font, ifsc_counter
+    ifsc_counter = ifsc_counter + 1
+
+    if request.method == 'POST':
+        if request.form['ifsc'] == 'Set IFSC':
+            ifsc_code = request.form['ifsc_code']
+            ifsc_code_x = request.form['ifsc_code_x']
+            ifsc_code_y = request.form['ifsc_code_y']
+            ifsc_code_font = request.form['ifsc_code_font']
+            test = [ifsc_code, ifsc_code_x, ifsc_code_y, ifsc_code_font]
+            print test
+            print ifsc_counter
+            overwrite(ifsc_code, int(ifsc_code_x), int(ifsc_code_y), int(ifsc_code_font), "sample-out.jpg", "sample-out1.jpg")
+    return render_template('ifsc_code.html')
+
+cdf_code = 00000000000
+cdf_code_x = 0
+cdf_code_y = 0
+cdf_code_font = 180
+cdf_counter = 0
+@app.route('/overwrite_cdf', methods=['POST'])
+def overwrite_cdf():
+    global cdf_code, cdf_code_x, cdf_code_y, cdf_code_font, cdf_counter
+    cdf_counter = cdf_counter + 1
+    if request.method == 'POST':
+        if request.form['cdf'] == 'Set CDF':
+            cdf_code = request.form['cdf_code']
+            cdf_code_x = request.form['cdf_code_x']
+            cdf_code_y = request.form['cdf_code_y']
+            cdf_code_font = request.form['cdf_code_font']
+            test = [cdf_code, cdf_code_x, cdf_code_y, cdf_code_font]
+            print test
+            print cdf_counter
+            overwrite(cdf_code, int(cdf_code_x), int(cdf_code_y), int(cdf_code_font), "sample-out1.jpg", "sample-out2.jpg")
+    return render_template('cdf_code.html')
+
+bank_name = 00000000000
+bank_name_x = 0
+bank_name_y = 0
+bank_name_font = 180
+bank_counter = 0
+@app.route('/overwrite_bank_name', methods=['POST'])
+def overwrite_bank_name():
+    global bank_name, bank_name_x, bank_name_y, bank_name_font, bank_counter
+    bank_counter = bank_counter + 1
+
+    if request.method == 'POST':
+        if request.form['bank'] == 'Set BANK':
+            bank_name = request.form['bank_name']
+            bank_name_x = request.form['bank_name_x']
+            bank_name_y = request.form['bank_name_y']
+            bank_name_font = request.form['bank_name_font']
+            test = [bank_name, bank_name_x, bank_name_y, bank_name_font]
+            print test
+            print bank_counter
+            overwrite(bank_name, int(bank_name_x), int(bank_name_y), int(bank_name_font), "sample-out2.jpg", "sample-out3.jpg")
+    return render_template('bank_name.html')
+
+@app.route('/final_image')
+def final_image():
+    if bank_counter > 0:
+        print "jjjjjjjjjjjjjjjjjjjjjj"
+        im = Image.open("./app/uploads/sample-out3.jpg")
+    elif cdf_counter > 0:
+        print "888888888888888888"
+        im = Image.open("./app/uploads/sample-out2.jpg")
+    elif ifsc_counter > 0:
+        print "0000000000000000"
+        im = Image.open("./app/uploads/sample-out1.jpg")
+    elif account_counter > 0:
+        print "---=-=-=-="
+        im = Image.open("./app/uploads/sample-out.jpg")
+
+    im.save("./app/uploads/output44r.jpg")
+    return render_template('final_image.html')
+
+@app.route('/compression')
+def compression():
     im = Image.open("./app/uploads/output44r.jpg")
 
     im = im.resize((830, 392), Image.ANTIALIAS)

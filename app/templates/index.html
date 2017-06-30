@@ -7,7 +7,8 @@
 <body>
 <div class="container">
     <div class="header">
-        <h3 class="text-muted">How To Upload a File</h3>
+        <h3 class="text-muted">Snapmint's Image Compression</h3>
+        <h5 class="text-muted">If you see same image, it's probably because of browser cache. Hit CTRL + R</h5>
     </div>
     <hr/>
     <div>
@@ -39,6 +40,102 @@
         <p>Detect edges in Image</p>
         <form action="detect_edges" target="_blank">
             <input type="submit" value="Detect Edges"/>
+        </form>
+    </div>
+
+    <br>
+    <div>
+        <p>Write account number on NACH</p>
+        <form action="overwrite_account" method="post" target="_blank">
+            <table style="width:80%">
+                <tr>
+                    <td> Account Number </td>
+                    <td> X </td>
+                    <td> Y </td>
+                    <td> Font Size </td>
+                </tr>
+                <tr>
+                    <td><input type="text" name="account_number"></td>
+                    <td><input type="text" name="account_number_x"></td>
+                    <td><input type="text" name="account_number_y"></td>
+                    <td><input type="text" name="account_number_font"></td>
+                </tr>
+            </table>
+            <input type="submit" name="account" value="Set Account"/>
+        </form>
+    </div>
+
+    <div>
+        <p>Write IFSC on NACH</p>
+        <form action="overwrite_ifsc" method="post" target="_blank">
+            <table style="width:80%">
+                <tr>
+                    <td> IFSC Code </td>
+                    <td> X (start around 4000) </td>
+                    <td> Y (start around 1000) </td>
+                    <td> Font Size </td>
+                </tr>
+                <tr>
+                    <td><input type="text" name="ifsc_code"></td>
+                    <td><input type="text" name="ifsc_code_x"></td>
+                    <td><input type="text" name="ifsc_code_y"></td>
+                    <td><input type="text" name="ifsc_code_font"></td>
+                </tr>
+            </table>
+            <input type="submit" name="ifsc" value="Set IFSC"/>
+        </form>
+    </div>
+
+    <div>
+        <p>Write CDF on NACH</p>
+        <form action="overwrite_cdf" method="post" target="_blank">
+            <table style="width:80%">
+                <tr>
+                    <td> CDF Number </td>
+                    <td> X (start around 0) </td>
+                    <td> Y (start around 0) </td>
+                    <td> Font Size (start around 180) </td>
+                </tr>
+                <tr>
+                    <td><input type="text" name="cdf_code"></td>
+                    <td><input type="text" name="cdf_code_x"></td>
+                    <td><input type="text" name="cdf_code_y"></td>
+                    <td><input type="text" name="cdf_code_font"></td>
+                </tr>
+            </table>
+            <input type="submit" name="cdf" value="Set CDF"/>
+        </form>
+    </div>
+
+
+    <div>
+        <p>Write BANK NAME on NACH</p>
+        <form action="overwrite_bank_name" method="post" target="_blank">
+            <table style="width:80%">
+                <tr>
+                    <td> Bank Name </td>
+                    <td> X (start around 0) </td>
+                    <td> Y (start around 0) </td>
+                    <td> Font Size (start around 180) </td>
+                </tr>
+                <tr>
+                    <td><input type="text" name="bank_name"></td>
+                    <td><input type="text" name="bank_name_x"></td>
+                    <td><input type="text" name="bank_name_y"></td>
+                    <td><input type="text" name="bank_name_font"></td>
+                </tr>
+            </table>
+            <input type="submit" name="bank" value="Set BANK"/>
+        </form>
+    </div>
+
+
+    <br>
+    <div>
+        <p>After finalizing your account number and ifsc codes.</p>
+        <p>Click below, it will prepare the image for compression</p>
+        <form action="final_image" target="_blank">
+            <input type="submit" value="Final Image"/>
         </form>
     </div>
 
