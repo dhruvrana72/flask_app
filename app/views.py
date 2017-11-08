@@ -8,12 +8,19 @@ from wand.image import Image as wandimage
 from skimage import exposure
 from app import app
 from PIL import Image, ImageFont, ImageDraw
+from wand.image import Image as wandimage
+from wand.api import library
+from wand.image import COMPRESSION_TYPES as compression_type
 
 global loc
 global crop
+global upload_folder
+global basedir
 
+basedir = os.path.abspath(os.path.dirname(__file__))
+app.config['UPLOAD_FOLDER'] = 'uploads/'
+upload_folder = os.path.join(basedir, app.config['UPLOAD_FOLDER'])
 
-app.config['UPLOAD_FOLDER'] = './app/uploads/'
 #app.static_folder = '/app/uploads'
 
 app.config['ALLOWED_EXTENSIONS'] = set(['txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'tiff'])
@@ -25,6 +32,7 @@ def allowed_file(filename):
 @app.route('/upload', methods=['POST'])
 def upload():
     # Get the name of the uploaded file
+    global upload_folder
     file = request.files['file']
     if file and allowed_file(file.filename):
         # Make the filename safe, remove unsupported chars
@@ -37,7 +45,7 @@ def upload():
         print new_filename
         # Move the file form the temporal folder to
         # the upload folder we setup
-        file.save(os.path.join(app.config['UPLOAD_FOLDER'], new_filename))
+        file.save(upload_folder+ new_filename)
         # Redirect the user to the uploaded_file route, which
         # will basicaly show on the browser the uploaded file
         return redirect(url_for('uploaded_file', filename=new_filename))
@@ -46,9 +54,10 @@ def upload():
 
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
+    global upload_folder
     print filename + "bunny"
     print os.path.join(app.config['UPLOAD_FOLDER'], filename)
-    return send_from_directory('../app/uploads',
+    return send_from_directory(upload_folder,
                                filename)
 
 @app.route("/")
@@ -64,7 +73,7 @@ def convert():
         print('pages = ', len(img.sequence))
         print('resolution = ', img.resolution)
         with img.convert('jpeg') as converted:
-            converted.save(filename='./app/uploads/converted_nach_page.jpg')
+           converted.save(filename=upload_folder+'converted_nach_page.jpg')
         print app.root_path
         return render_template('converted_image.html')
 
@@ -81,12 +90,17 @@ def my_form_post():
             threshold = text
     return threshold
 
-@app.route('/detect_edges')
-def detect_edges():
+@app.route('/flatten_image')
+def flatten_image():
     global loc
     global crop
     global threshold
-    image = cv2.imread("./app/uploads/converted_nach_page.jpg")
+    global upload_folder
+    global basedir
+    if os.path.exists(upload_folder + 'converted_nach_page.jpg'):
+        image = cv2.imread(upload_folder + "converted_nach_page.jpg")
+    else:
+        image = cv2.imread(upload_folder + "converted_nach_page.jpeg")
     ratio = image.shape[0] / 800.0
     (h, w) = image.shape[:2]
     r = 800 / float(h)
@@ -118,6 +132,7 @@ def detect_edges():
             break
 
     print("finding contours of paper")
+    print basedir
     pts = screenCnt.reshape(4, 2) * ratio
     rect = np.zeros((4, 2), dtype="float32")
 
@@ -151,12 +166,92 @@ def detect_edges():
     X = cv2.getPerspectiveTransform(rect, dst)
 
     crop = cv2.warpPerspective(orig, X, (maxWidth, maxHeight))
-    cv2.imwrite("./app/uploads/31.jpg", crop)
+    cv2.imwrite(upload_folder + "31.jpg", crop)
+    return send_from_directory(upload_folder,
+                               '31.jpg')
+
+@app.route('/detect_edges')
+def detect_edges():
+    global loc
+    global crop
+    global threshold
+    global upload_folder
+    global basedir
+    if os.path.exists(upload_folder + 'converted_nach_page.jpg'):
+        image = cv2.imread(upload_folder + "converted_nach_page.jpg")
+    else:
+        image = cv2.imread(upload_folder + "converted_nach_page.jpeg")
+    ratio = image.shape[0] / 800.0
+    (h, w) = image.shape[:2]
+    r = 800 / float(h)
+    width = int(w * r)
+    dim = None
+
+    res = cv2.resize(image, (width, 800), interpolation=cv2.INTER_AREA)
+
+    print(dim)
+    print ratio
+
+    # convert into grayscale, blur it and find its edges
+    orig = image.copy()
+    gray = cv2.cvtColor(res, cv2.COLOR_BGR2GRAY)
+    blur = cv2.GaussianBlur(gray, (5, 5), 0)
+
+    # use Canny edge detection method for detecting edges
+    edged = cv2.Canny(blur, 75, 200)
+
+    (_, cnts, _) = cv2.findContours(edged.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+    cnts = sorted(cnts, key=cv2.contourArea, reverse=True)[:5]
+
+    for c in cnts:
+        peri = cv2.arcLength(c, True)
+        approx = cv2.approxPolyDP(c, 0.02 * peri, True)
+        print len(approx)
+        if len(approx) == 4:
+            screenCnt = approx
+            break
+
+    print("finding contours of paper")
+    print basedir
+    pts = screenCnt.reshape(4, 2) * ratio
+    rect = np.zeros((4, 2), dtype="float32")
+
+    s = pts.sum(axis=1)
+    rect[0] = pts[np.argmin(s)]
+    rect[2] = pts[np.argmax(s)]
+
+    diff = np.diff(pts, axis=1)
+    rect[1] = pts[np.argmin(diff)]
+    rect[3] = pts[np.argmax(diff)]
+
+    (tl, tr, br, bl) = rect
+    print ((tl, tr, br, bl))
+
+    # new dimensions of image
+
+    widthA = np.sqrt(((br[0] - bl[0]) ** 2) + ((br[1] - bl[1]) ** 2))
+    widthB = np.sqrt(((tr[0] - tl[0]) ** 2) + ((tr[1] - tl[1]) ** 2))
+    maxWidth = max(int(widthA), int(widthB))
+
+    heightA = np.sqrt(((tr[0] - br[0]) ** 2) + ((tr[1] - br[1]) ** 2))
+    heightB = np.sqrt(((tl[0] - bl[0]) ** 2) + ((tl[1] - bl[1]) ** 2))
+    maxHeight = max(int(heightA), int(heightB))
+
+    dst = np.array([
+        [0, 0],
+        [maxWidth - 1, 0],
+        [maxWidth - 1, maxHeight - 1],
+        [0, maxHeight - 1]], dtype="float32")
+
+    X = cv2.getPerspectiveTransform(rect, dst)
+
+    crop = cv2.warpPerspective(orig, X, (maxWidth, maxHeight))
+    cv2.imwrite(upload_folder + "31.jpg", crop)
 
     print threshold
     #crop = image
     img_gray = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
-    template = cv2.imread('./app/images/template.png', 0)
+    template = cv2.imread(basedir + '/images/template.png', 0)
     w, h = template.shape[::-1]
     res = cv2.matchTemplate(img_gray, template, cv2.TM_CCOEFF_NORMED)
     loc = np.where(res >= float(threshold))
@@ -165,16 +260,16 @@ def detect_edges():
 
     for pt in zip(*loc[::-1]):
         cv2.rectangle(crop, pt, (pt[0] + w, pt[1] + h), (0, 0, 255), 2)
-    cv2.imwrite('./app/uploads/res.png', crop)
+    cv2.imwrite(upload_folder + 'res.png', crop)
 
     print loc
     print cv2.__version__
     pts = np.array(zip(*loc[::-1]), 'int32')
     x, y, w, h = cv2.boundingRect(pts)
     cv2.rectangle(crop, (x, y), (x + w, y + h), (0, 255, 0), 2)
-    cv2.imwrite("./app/uploads/img5_rect.jpg", crop)
+    cv2.imwrite(upload_folder + "img5_rect.jpg", crop)
     nach = crop[y:y + h, x:x + w]
-    cv2.imwrite('./app/uploads/output44t.jpg', nach)
+    cv2.imwrite(upload_folder + 'output44t.jpg', nach)
 
     im = nach
     gray = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
@@ -197,7 +292,7 @@ def detect_edges():
     final_image = cv2.warpPerspective(im, H, (width, height))
     final_image = cv2.cvtColor(final_image, cv2.COLOR_BGR2GRAY)
     final_image = exposure.rescale_intensity(final_image, out_range=(0, 255))
-    cv2.imwrite('./app/uploads/output44r.jpg', final_image)
+    cv2.imwrite(upload_folder+'output44r.jpg', final_image)
     return render_template('detect_edges.html')
 
 def overwrite(number, x, y, font, image, output_image):
@@ -309,26 +404,38 @@ def final_image():
         print "---=-=-=-="
         im = Image.open("./app/uploads/sample-out.jpg")
 
-    im.save("./app/uploads/output44r.jpg")
+    im.save(upload_folder +"output44r.jpg")
     return render_template('final_image.html')
 
 @app.route('/compression')
 def compression():
-    im = Image.open("./app/uploads/output44r.jpg")
-
+    global upload_folder
+    if os.path.exists(upload_folder + "output44r.jpg"):
+        im = Image.open(upload_folder + "output44r.jpg")
+    elif os.path.exists(upload_folder + "31.jpg"):
+        im = Image.open(upload_folder + "31.jpg")
     im = im.resize((830, 392), Image.ANTIALIAS)
-    im.save("./app/uploads/kenya_buzz.jpg")
-    im.save("./app/uploads/compressed_jpeg.jpg", format="JPEG", quality=70)
-    nach = cv2.imread('./app/uploads/kenya_buzz.jpg')
+    im.save(upload_folder +"kenya_buzz.jpg")
+    im.save(upload_folder +"compressed_jpeg.jpg", format="JPEG", quality=70)
+    nach = cv2.imread(upload_folder +'kenya_buzz.jpg')
 
     nach_grey = cv2.cvtColor(nach, cv2.COLOR_BGR2GRAY)
     ret, threshnach = cv2.threshold(nach_grey, 160, 255, cv2.THRESH_BINARY)
     ret2nach, th2nach = cv2.threshold(nach_grey, 200, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    th3 = cv2.adaptiveThreshold(nach_grey, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 20)
+    th2 = cv2.adaptiveThreshold(nach_grey, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 11, 7)
 
     ret, th10 = cv2.threshold(nach_grey, 200, 255, cv2.THRESH_BINARY)
-    cv2.imwrite('./app/uploads/nach_binry.tiff', threshnach)
-    cv2.imwrite('./app/uploads/nach_binry_ostu.tiff', th2nach)
-    cv2.imwrite('./app/uploads/nach_binry_10.tiff', th10)
+    cv2.imwrite(upload_folder +'nach_binry.tiff', threshnach)
+    cv2.imwrite(upload_folder +'nach_binry_ostu.tiff', th2nach)
+    cv2.imwrite(upload_folder +'nach_binry_10.tiff', th10)
+    cv2.imwrite('nach_adaptive.tiff', th3)
+    cv2.imwrite('nach_guass.tiff', th2)
+
+    with wandimage(filename='nach_guass.tiff') as img:
+        library.MagickSetImageCompression(img.wand, compression_type.index('fax'))
+        library.MagickSetImageCompressionQuality(img.wand, 30)
+        img.save(filename=upload_folder + 'outputimage_thumbnail2kl.tiff')
     return render_template('compression.html')
 
 if __name__ == "__main__":
